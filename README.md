@@ -51,7 +51,7 @@ flowchart TD
 
 ## Benchmarks
 
-Measured on Qualcomm bengal\_515, Android 14, NOGMS build, Sevierville TN.
+Measured on Qualcomm, Android 14, AOSP build, Maryville, TN.
 
 ### Fix latency and accuracy
 
