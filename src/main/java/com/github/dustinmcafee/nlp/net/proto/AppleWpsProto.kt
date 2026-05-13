@@ -30,7 +30,6 @@ import java.io.ByteArrayOutputStream
  * by colons. Lat/lng as double = int64 / 1e8.
  */
 internal object AppleWpsProto {
-
     private const val WIRE_LATLON = 1.0e8
 
     // AppleWLoc field numbers
@@ -47,7 +46,9 @@ internal object AppleWpsProto {
     private const val LOC_HACCURACY = 3
 
     /** A BSSID we want positioned. */
-    data class WifiQuery(val bssid: String)
+    data class WifiQuery(
+        val bssid: String,
+    )
 
     /** A BSSID with its server-returned position (or null if Apple didn't know it). */
     data class WifiResult(
@@ -64,7 +65,10 @@ internal object AppleWpsProto {
      * returns positions for any BSSID it knows, plus often a handful of
      * "neighbor" BSSIDs (controlled by [numWifiResults] >= 0).
      */
-    fun encodeRequest(wifis: List<WifiQuery>, numWifiResults: Int = 0): ByteArray {
+    fun encodeRequest(
+        wifis: List<WifiQuery>,
+        numWifiResults: Int = 0,
+    ): ByteArray {
         val out = ByteArrayOutputStream()
         for (w in wifis) {
             val wd = encodeWifiDevice(w.bssid)
@@ -99,7 +103,10 @@ internal object AppleWpsProto {
                     val wdBytes = WireFormat.readBytes(`in`, len)
                     results.add(parseWifiDevice(wdBytes))
                 }
-                else -> WireFormat.skipField(`in`, wireType)
+
+                else -> {
+                    WireFormat.skipField(`in`, wireType)
+                }
             }
         }
         return results
@@ -116,11 +123,15 @@ internal object AppleWpsProto {
                     val len = WireFormat.readVarint(`in`).toInt()
                     bssid = String(WireFormat.readBytes(`in`, len), Charsets.UTF_8)
                 }
+
                 field == WD_LOCATION && wireType == WireFormat.WIRE_LENGTH_DELIMITED -> {
                     val len = WireFormat.readVarint(`in`).toInt()
                     locBytes = WireFormat.readBytes(`in`, len)
                 }
-                else -> WireFormat.skipField(`in`, wireType)
+
+                else -> {
+                    WireFormat.skipField(`in`, wireType)
+                }
             }
         }
         if (locBytes == null) return WifiResult(bssid, null, null, null)
@@ -141,13 +152,21 @@ internal object AppleWpsProto {
         while (`in`.available() > 0) {
             val (field, wireType) = WireFormat.parseTag(WireFormat.readVarint(`in`))
             when {
-                field == LOC_LAT && wireType == WireFormat.WIRE_VARINT ->
+                field == LOC_LAT && wireType == WireFormat.WIRE_VARINT -> {
                     lat = WireFormat.readVarint(`in`)
-                field == LOC_LNG && wireType == WireFormat.WIRE_VARINT ->
+                }
+
+                field == LOC_LNG && wireType == WireFormat.WIRE_VARINT -> {
                     lng = WireFormat.readVarint(`in`)
-                field == LOC_HACCURACY && wireType == WireFormat.WIRE_VARINT ->
+                }
+
+                field == LOC_HACCURACY && wireType == WireFormat.WIRE_VARINT -> {
                     hAcc = WireFormat.readVarint(`in`)
-                else -> WireFormat.skipField(`in`, wireType)
+                }
+
+                else -> {
+                    WireFormat.skipField(`in`, wireType)
+                }
             }
         }
         val latDeg = lat?.let { it.toDouble() / WIRE_LATLON }?.takeIf { it in -90.0..90.0 }

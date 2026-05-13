@@ -14,17 +14,22 @@ import java.io.InputStream
  * Wire format reference: https://protobuf.dev/programming-guides/encoding/
  */
 internal object WireFormat {
-
     const val WIRE_VARINT = 0
     const val WIRE_FIXED64 = 1
     const val WIRE_LENGTH_DELIMITED = 2
     const val WIRE_FIXED32 = 5
 
     /** Encode a (fieldNumber, wireType) tag as a varint. */
-    fun tag(fieldNumber: Int, wireType: Int): Int = (fieldNumber shl 3) or wireType
+    fun tag(
+        fieldNumber: Int,
+        wireType: Int,
+    ): Int = (fieldNumber shl 3) or wireType
 
     /** Write a varint (LEB128) to [out]. Handles signed by reinterpreting as ulong. */
-    fun writeVarint(out: ByteArrayOutputStream, value: Long) {
+    fun writeVarint(
+        out: ByteArrayOutputStream,
+        value: Long,
+    ) {
         var v = value
         while ((v and 0x7FL.inv()) != 0L) {
             out.write(((v and 0x7FL) or 0x80L).toInt())
@@ -33,13 +38,20 @@ internal object WireFormat {
         out.write((v and 0x7FL).toInt())
     }
 
-    fun writeVarint(out: ByteArrayOutputStream, value: Int) {
+    fun writeVarint(
+        out: ByteArrayOutputStream,
+        value: Int,
+    ) {
         // Sign-extend negative ints to long so they encode as 10 bytes (matches proto3).
         writeVarint(out, value.toLong())
     }
 
     /** Write a tag byte sequence. */
-    fun writeTag(out: ByteArrayOutputStream, fieldNumber: Int, wireType: Int) {
+    fun writeTag(
+        out: ByteArrayOutputStream,
+        fieldNumber: Int,
+        wireType: Int,
+    ) {
         writeVarint(out, tag(fieldNumber, wireType))
     }
 
@@ -55,7 +67,11 @@ internal object WireFormat {
     }
 
     /** Encode a varint field: tag + varint value. */
-    fun writeVarintField(out: ByteArrayOutputStream, fieldNumber: Int, value: Long) {
+    fun writeVarintField(
+        out: ByteArrayOutputStream,
+        fieldNumber: Int,
+        value: Long,
+    ) {
         writeTag(out, fieldNumber, WIRE_VARINT)
         writeVarint(out, value)
     }
@@ -64,7 +80,11 @@ internal object WireFormat {
      * Encode a sint32 field. proto3 sint32/sint64 use ZigZag encoding so that
      * small negatives produce small varints.
      */
-    fun writeSint32Field(out: ByteArrayOutputStream, fieldNumber: Int, value: Int) {
+    fun writeSint32Field(
+        out: ByteArrayOutputStream,
+        fieldNumber: Int,
+        value: Int,
+    ) {
         writeTag(out, fieldNumber, WIRE_VARINT)
         writeVarint(out, ((value shl 1) xor (value shr 31)).toLong() and 0xFFFFFFFFL)
     }
@@ -84,7 +104,10 @@ internal object WireFormat {
     }
 
     /** Read exactly [n] bytes; EOFException if stream ends early. */
-    fun readBytes(`in`: InputStream, n: Int): ByteArray {
+    fun readBytes(
+        `in`: InputStream,
+        n: Int,
+    ): ByteArray {
         val out = ByteArray(n)
         var read = 0
         while (read < n) {
@@ -96,16 +119,31 @@ internal object WireFormat {
     }
 
     /** Skip an unknown field's value given its wireType. */
-    fun skipField(`in`: InputStream, wireType: Int) {
+    fun skipField(
+        `in`: InputStream,
+        wireType: Int,
+    ) {
         when (wireType) {
-            WIRE_VARINT -> readVarint(`in`)
-            WIRE_FIXED64 -> readBytes(`in`, 8)
+            WIRE_VARINT -> {
+                readVarint(`in`)
+            }
+
+            WIRE_FIXED64 -> {
+                readBytes(`in`, 8)
+            }
+
             WIRE_LENGTH_DELIMITED -> {
                 val len = readVarint(`in`).toInt()
                 readBytes(`in`, len)
             }
-            WIRE_FIXED32 -> readBytes(`in`, 4)
-            else -> throw IllegalStateException("unsupported wire type $wireType")
+
+            WIRE_FIXED32 -> {
+                readBytes(`in`, 4)
+            }
+
+            else -> {
+                throw IllegalStateException("unsupported wire type $wireType")
+            }
         }
     }
 

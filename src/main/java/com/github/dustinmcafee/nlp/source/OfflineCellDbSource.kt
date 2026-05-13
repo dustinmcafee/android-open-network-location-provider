@@ -24,22 +24,27 @@ import kotlin.math.sqrt
  *   - None of the observed cells are in the DB (rural / new tower)
  *   - We have only one cell with no signal info (can't estimate accuracy)
  */
-internal class OfflineCellDbSource(private val db: OfflineCellDb) {
-
+internal class OfflineCellDbSource(
+    private val db: OfflineCellDb,
+) {
     fun query(observations: List<CellObserver.CellObservation>): Location? {
         if (!db.isAvailable || observations.isEmpty()) return null
 
-        val matches = observations.mapNotNull { obs ->
-            val t = db.lookup(obs) ?: return@mapNotNull null
-            Pair(obs, t)
-        }
+        val matches =
+            observations.mapNotNull { obs ->
+                val t = db.lookup(obs) ?: return@mapNotNull null
+                Pair(obs, t)
+            }
         if (matches.isEmpty()) return null
 
         val started = SystemClock.elapsedRealtime()
         val fix = fuseTowers(matches, started)
-        Log.i(TAG, "cell hit: ${matches.size} of ${observations.size} cells → " +
-            "lat=${fix.latitude} lng=${fix.longitude} acc=${fix.accuracy}m " +
-            "(${SystemClock.elapsedRealtime() - started}ms)")
+        Log.i(
+            TAG,
+            "cell hit: ${matches.size} of ${observations.size} cells → " +
+                "lat=${fix.latitude} lng=${fix.longitude} acc=${fix.accuracy}m " +
+                "(${SystemClock.elapsedRealtime() - started}ms)",
+        )
         return fix
     }
 
@@ -90,21 +95,30 @@ internal class OfflineCellDbSource(private val db: OfflineCellDb) {
     }
 
     /** Combined signal + range weight. */
-    private fun towerWeight(signalDbm: Int, rangeMeters: Int): Double {
+    private fun towerWeight(
+        signalDbm: Int,
+        rangeMeters: Int,
+    ): Double {
         val wSignal = Math.pow(10.0, (signalDbm + 120.0) / 30.0)
         val r = rangeMeters.coerceAtLeast(50).toDouble()
         val wRange = 1.0 / (r * r)
         return wSignal * wRange
     }
 
-    private fun haversineMeters(la1: Double, ln1: Double, la2: Double, ln2: Double): Double {
+    private fun haversineMeters(
+        la1: Double,
+        ln1: Double,
+        la2: Double,
+        ln2: Double,
+    ): Double {
         val r = 6_371_000.0
         val phi1 = Math.toRadians(la1)
         val phi2 = Math.toRadians(la2)
         val dPhi = Math.toRadians(la2 - la1)
         val dLam = Math.toRadians(ln2 - ln1)
-        val a = Math.sin(dPhi / 2).let { it * it } +
-            cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
+        val a =
+            Math.sin(dPhi / 2).let { it * it } +
+                cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
         return 2 * r * Math.asin(sqrt(a))
     }
 

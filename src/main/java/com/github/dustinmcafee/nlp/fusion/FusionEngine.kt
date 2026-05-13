@@ -39,7 +39,6 @@ internal class FusionEngine(
     context: Context,
     private val sink: Sink,
 ) {
-
     fun interface Sink {
         fun deliver(location: Location)
     }
@@ -49,9 +48,10 @@ internal class FusionEngine(
     private val scanThread = HandlerThread("NlpFusionScan").also { it.start() }
     private val scanHandler = Handler(scanThread.looper)
 
-    private val httpExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "NlpFusionHttp").apply { isDaemon = true }
-    }
+    private val httpExecutor =
+        Executors.newSingleThreadExecutor { r ->
+            Thread(r, "NlpFusionHttp").apply { isDaemon = true }
+        }
 
     private val wifi = WifiObserver(appCtx, scanHandler)
     private val wps = AppleWpsSource()
@@ -63,12 +63,13 @@ internal class FusionEngine(
 
     private val latestObservations = AtomicReference<List<WifiObservation>?>(null)
 
-    private val gpsLearner = GpsLearningObserver(
-        context = appCtx,
-        handler = scanHandler,
-        cache = cacheDb,
-        getCurrentObservations = { latestObservations.get() },
-    )
+    private val gpsLearner =
+        GpsLearningObserver(
+            context = appCtx,
+            handler = scanHandler,
+            cache = cacheDb,
+            getCurrentObservations = { latestObservations.get() },
+        )
 
     private val running = AtomicBoolean(false)
     private var intervalMs: Long = 0L
@@ -80,8 +81,11 @@ internal class FusionEngine(
         }
         intervalMs = intervalMillis
         if (running.compareAndSet(false, true)) {
-            Log.i(TAG, "starting fusion loop at ${intervalMs}ms interval " +
-                "(cellDb available=${cellDb.isAvailable})")
+            Log.i(
+                TAG,
+                "starting fusion loop at ${intervalMs}ms interval " +
+                    "(cellDb available=${cellDb.isAvailable})",
+            )
             gpsLearner.start()
             scanHandler.post(tickRunnable)
         } else {
@@ -105,83 +109,93 @@ internal class FusionEngine(
         cellDb.close()
     }
 
-    private val tickRunnable = object : Runnable {
-        override fun run() {
-            if (!running.get()) return
-            wifi.observeOnce { observations ->
-                latestObservations.set(observations)
+    private val tickRunnable =
+        object : Runnable {
+            override fun run() {
+                if (!running.get()) return
+                wifi.observeOnce { observations ->
+                    latestObservations.set(observations)
 
-                // Path 1: Wi-Fi cache (offline, fastest, most accurate).
-                if (observations.isNotEmpty()) {
-                    val cacheFix = cache.query(observations)
-                    if (cacheFix != null) {
-                        sink.deliver(cacheFix)
-                        rescheduleNext()
-                        return@observeOnce
-                    }
-                }
-
-                // Path 2: Wi-Fi WPS (online, seeds cache for next time).
-                // Path 3: cell-DB fallback runs after WPS on the same
-                // executor so we don't double up on Wi-Fi-rich queries.
-                httpExecutor.execute {
-                    var delivered = false
+                    // Path 1: Wi-Fi cache (offline, fastest, most accurate).
                     if (observations.isNotEmpty()) {
-                        val result = wps.queryWithRaw(observations)
-                        val nowEpochSec = System.currentTimeMillis() / 1000L
-                        for (b in result.perBssidFixes) {
-                            if (b.hasFix) {
-                                cacheDb.observe(
-                                    bssid = b.bssid,
-                                    latDeg = b.latDeg!!,
-                                    lngDeg = b.lngDeg!!,
-                                    nowEpochSec = nowEpochSec,
+                        val cacheFix = cache.query(observations)
+                        if (cacheFix != null) {
+                            sink.deliver(cacheFix)
+                            rescheduleNext()
+                            return@observeOnce
+                        }
+                    }
+
+                    // Path 2: Wi-Fi WPS (online, seeds cache for next time).
+                    // Path 3: cell-DB fallback runs after WPS on the same
+                    // executor so we don't double up on Wi-Fi-rich queries.
+                    httpExecutor.execute {
+                        var delivered = false
+                        if (observations.isNotEmpty()) {
+                            val result = wps.queryWithRaw(observations)
+                            val nowEpochSec = System.currentTimeMillis() / 1000L
+                            for (b in result.perBssidFixes) {
+                                if (b.hasFix) {
+                                    cacheDb.observe(
+                                        bssid = b.bssid,
+                                        latDeg = b.latDeg!!,
+                                        lngDeg = b.lngDeg!!,
+                                        nowEpochSec = nowEpochSec,
+                                    )
+                                }
+                            }
+                            val fix = result.fix
+                            if (fix != null) {
+                                Log.i(
+                                    TAG,
+                                    "fix (wps): lat=${fix.latitude} " +
+                                        "lng=${fix.longitude} acc=${fix.accuracy}m " +
+                                        "(seeded ${result.perBssidFixes.size} cache entries)",
                                 )
+                                sink.deliver(fix)
+                                delivered = true
                             }
                         }
-                        val fix = result.fix
-                        if (fix != null) {
-                            Log.i(TAG, "fix (wps): lat=${fix.latitude} " +
-                                "lng=${fix.longitude} acc=${fix.accuracy}m " +
-                                "(seeded ${result.perBssidFixes.size} cache entries)")
-                            sink.deliver(fix)
-                            delivered = true
-                        }
-                    }
-                    // Path 3: cell-DB. Runs only when:
-                    //   - no Wi-Fi BSSIDs visible at all, OR
-                    //   - WPS couldn't deliver a fix.
-                    // The cell DB lookup is offline and cheap, so we always
-                    // try it as a last resort rather than gating on whether
-                    // we have a SIM (CellObserver returns empty cleanly).
-                    if (!delivered) {
-                        val cells = cell.observeOnce()
-                        if (cells.isNotEmpty()) {
-                            val cellFix = cellSource.query(cells)
-                            if (cellFix != null) {
-                                Log.i(TAG, "fix (cell): lat=${cellFix.latitude} " +
-                                    "lng=${cellFix.longitude} acc=${cellFix.accuracy}m")
-                                sink.deliver(cellFix)
+                        // Path 3: cell-DB. Runs only when:
+                        //   - no Wi-Fi BSSIDs visible at all, OR
+                        //   - WPS couldn't deliver a fix.
+                        // The cell DB lookup is offline and cheap, so we always
+                        // try it as a last resort rather than gating on whether
+                        // we have a SIM (CellObserver returns empty cleanly).
+                        if (!delivered) {
+                            val cells = cell.observeOnce()
+                            if (cells.isNotEmpty()) {
+                                val cellFix = cellSource.query(cells)
+                                if (cellFix != null) {
+                                    Log.i(
+                                        TAG,
+                                        "fix (cell): lat=${cellFix.latitude} " +
+                                            "lng=${cellFix.longitude} acc=${cellFix.accuracy}m",
+                                    )
+                                    sink.deliver(cellFix)
+                                } else {
+                                    Log.d(
+                                        TAG,
+                                        "tick: cell DB had no matches " +
+                                            "for ${cells.size} observed cells",
+                                    )
+                                }
                             } else {
-                                Log.d(TAG, "tick: cell DB had no matches " +
-                                    "for ${cells.size} observed cells")
+                                Log.d(TAG, "tick: no Wi-Fi fix, no cells observed — no fix this tick")
                             }
-                        } else {
-                            Log.d(TAG, "tick: no Wi-Fi fix, no cells observed — no fix this tick")
                         }
                     }
+
+                    rescheduleNext()
                 }
+            }
 
-                rescheduleNext()
+            private fun rescheduleNext() {
+                if (running.get()) {
+                    scanHandler.postDelayed(this, intervalMs)
+                }
             }
         }
-
-        private fun rescheduleNext() {
-            if (running.get()) {
-                scanHandler.postDelayed(this, intervalMs)
-            }
-        }
-    }
 
     companion object {
         private const val TAG = "NlpFusion"

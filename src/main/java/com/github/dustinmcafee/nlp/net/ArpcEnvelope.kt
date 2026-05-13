@@ -24,7 +24,6 @@ import java.nio.ByteOrder
  * leading 10 bytes.
  */
 internal object ArpcEnvelope {
-
     // Identity values mirror what Apple's locationd sends. Avoid changing
     // OS_VERSION wantonly — Apple may screen on apparent client version.
     // If WPS responses degrade in the future, refresh these from a current
@@ -62,17 +61,26 @@ internal object ArpcEnvelope {
         return responseBody.copyOfRange(RESPONSE_HEADER_BYTES, responseBody.size)
     }
 
-    private fun writeUint16BE(out: ByteArrayOutputStream, v: Int) {
+    private fun writeUint16BE(
+        out: ByteArrayOutputStream,
+        v: Int,
+    ) {
         out.write((v ushr 8) and 0xFF)
         out.write(v and 0xFF)
     }
 
-    private fun writeUint32BE(out: ByteArrayOutputStream, v: Int) {
+    private fun writeUint32BE(
+        out: ByteArrayOutputStream,
+        v: Int,
+    ) {
         val buf = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(v)
         out.write(buf.array())
     }
 
-    private fun writePascalString(out: ByteArrayOutputStream, s: String) {
+    private fun writePascalString(
+        out: ByteArrayOutputStream,
+        s: String,
+    ) {
         val bytes = s.toByteArray(Charsets.UTF_8)
         require(bytes.size <= 0xFFFF) { "pascal string too long: ${bytes.size}" }
         writeUint16BE(out, bytes.size)

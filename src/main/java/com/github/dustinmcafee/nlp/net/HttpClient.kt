@@ -16,19 +16,22 @@ import java.net.URL
  * macOS locationd. Apple's endpoint does not require auth.
  */
 internal object HttpClient {
-
     private const val TAG = "NlpHttpClient"
 
     /** Headers iOS/macOS locationd sends. Order matters less than presence. */
-    val APPLE_LOCATIONS_HEADERS: Map<String, String> = mapOf(
-        "Content-Type" to "application/x-www-form-urlencoded",
-        "Accept" to "*/*",
-        "Accept-Charset" to "utf-8",
-        "Accept-Language" to "en-us",
-        "User-Agent" to "locationd/2890.16.16 CFNetwork/1496.0.7 Darwin/23.5.0",
-    )
+    val APPLE_LOCATIONS_HEADERS: Map<String, String> =
+        mapOf(
+            "Content-Type" to "application/x-www-form-urlencoded",
+            "Accept" to "*/*",
+            "Accept-Charset" to "utf-8",
+            "Accept-Language" to "en-us",
+            "User-Agent" to "locationd/2890.16.16 CFNetwork/1496.0.7 Darwin/23.5.0",
+        )
 
-    data class Response(val statusCode: Int, val body: ByteArray)
+    data class Response(
+        val statusCode: Int,
+        val body: ByteArray,
+    )
 
     /**
      * POST [body] to [url] with [headers]. Returns the response body bytes
@@ -43,16 +46,17 @@ internal object HttpClient {
         connectTimeoutMs: Int = 5_000,
         readTimeoutMs: Int = 8_000,
     ): Response {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doOutput = true
-            connectTimeout = connectTimeoutMs
-            readTimeout = readTimeoutMs
-            useCaches = false
-            instanceFollowRedirects = false
-            for ((k, v) in headers) setRequestProperty(k, v)
-            setFixedLengthStreamingMode(body.size)
-        }
+        val conn =
+            (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = connectTimeoutMs
+                readTimeout = readTimeoutMs
+                useCaches = false
+                instanceFollowRedirects = false
+                for ((k, v) in headers) setRequestProperty(k, v)
+                setFixedLengthStreamingMode(body.size)
+            }
         try {
             conn.outputStream.use { it.write(body) }
             val status = conn.responseCode

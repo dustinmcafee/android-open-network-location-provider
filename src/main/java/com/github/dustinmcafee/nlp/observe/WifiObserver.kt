@@ -23,8 +23,10 @@ import com.github.dustinmcafee.nlp.source.AppleWpsSource.WifiObservation
  * scan-start timestamps and skip explicit re-scans when within the
  * throttling window — falling back to the system-cached results.
  */
-internal class WifiObserver(private val context: Context, private val handler: Handler) {
-
+internal class WifiObserver(
+    private val context: Context,
+    private val handler: Handler,
+) {
     /** Callback for a completed scan. May be invoked on the handler thread. */
     fun interface Listener {
         fun onObservations(observations: List<WifiObservation>)
@@ -70,8 +72,11 @@ internal class WifiObserver(private val context: Context, private val handler: H
                 }
             }, SCAN_TIMEOUT_MS)
         } else {
-            Log.i(TAG, "scan throttled (${scanStartTimes.size}/$MAX_SCANS_PER_WINDOW " +
-                "in last ${SCAN_THROTTLE_WINDOW_MS / 1000}s); using cached results")
+            Log.i(
+                TAG,
+                "scan throttled (${scanStartTimes.size}/$MAX_SCANS_PER_WINDOW " +
+                    "in last ${SCAN_THROTTLE_WINDOW_MS / 1000}s); using cached results",
+            )
             deliverCached(listener)
         }
     }
@@ -79,23 +84,30 @@ internal class WifiObserver(private val context: Context, private val handler: H
     private fun mayTriggerScan(): Boolean {
         val now = SystemClock.elapsedRealtime()
         while (scanStartTimes.isNotEmpty() &&
-            now - scanStartTimes.first() > SCAN_THROTTLE_WINDOW_MS) {
+            now - scanStartTimes.first() > SCAN_THROTTLE_WINDOW_MS
+        ) {
             scanStartTimes.removeFirst()
         }
         return scanStartTimes.size < MAX_SCANS_PER_WINDOW
     }
 
     private fun registerReceiver(listener: Listener) {
-        val r = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context, intent: Intent) {
-                val updated = intent.getBooleanExtra(
-                    WifiManager.EXTRA_RESULTS_UPDATED, true
-                )
-                Log.d(TAG, "SCAN_RESULTS_AVAILABLE updated=$updated")
-                deliverCached(listener)
-                unregisterReceiver()
+        val r =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    ctx: Context,
+                    intent: Intent,
+                ) {
+                    val updated =
+                        intent.getBooleanExtra(
+                            WifiManager.EXTRA_RESULTS_UPDATED,
+                            true,
+                        )
+                    Log.d(TAG, "SCAN_RESULTS_AVAILABLE updated=$updated")
+                    deliverCached(listener)
+                    unregisterReceiver()
+                }
             }
-        }
         receiver = r
         val filter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -117,12 +129,13 @@ internal class WifiObserver(private val context: Context, private val handler: H
     }
 
     private fun deliverCached(listener: Listener) {
-        val raw: List<ScanResult> = try {
-            wifiManager.scanResults ?: emptyList()
-        } catch (e: SecurityException) {
-            Log.e(TAG, "scanResults: ${e.message}")
-            emptyList()
-        }
+        val raw: List<ScanResult> =
+            try {
+                wifiManager.scanResults ?: emptyList()
+            } catch (e: SecurityException) {
+                Log.e(TAG, "scanResults: ${e.message}")
+                emptyList()
+            }
         // No "locally-administered MAC" filter: scan results never contain
         // device-randomized MACs (those only show up as the device's own
         // address, never in other APs' broadcasts). Enterprise APs commonly
@@ -130,10 +143,11 @@ internal class WifiObserver(private val context: Context, private val handler: H
         // continuously broadcast, and indexed in upstream WPS databases just
         // like any other AP. Filtering them out cost us ~95% of usable
         // signal during testing.
-        val obs = raw.mapNotNull { sr ->
-            val bssid = sr.BSSID ?: return@mapNotNull null
-            WifiObservation(bssid = bssid, rssi = sr.level)
-        }
+        val obs =
+            raw.mapNotNull { sr ->
+                val bssid = sr.BSSID ?: return@mapNotNull null
+                WifiObservation(bssid = bssid, rssi = sr.level)
+            }
         Log.i(TAG, "delivering ${obs.size} BSSIDs (${raw.size} raw scan results)")
         handler.post { listener.onObservations(obs) }
     }
@@ -141,7 +155,7 @@ internal class WifiObserver(private val context: Context, private val handler: H
     companion object {
         private const val TAG = "NlpWifiObserver"
         private const val MAX_SCANS_PER_WINDOW = 4
-        private const val SCAN_THROTTLE_WINDOW_MS = 2L * 60 * 1000  // 2 min
+        private const val SCAN_THROTTLE_WINDOW_MS = 2L * 60 * 1000 // 2 min
         private const val SCAN_TIMEOUT_MS = 8_000L
     }
 }

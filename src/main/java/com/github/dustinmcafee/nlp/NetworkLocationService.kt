@@ -21,7 +21,6 @@ import com.github.dustinmcafee.nlp.fusion.FusionEngine
  * [FusionEngine] that owns Wi-Fi scanning + WPS queries.
  */
 class NetworkLocationService : Service() {
-
     private lateinit var provider: Provider
 
     override fun onCreate() {
@@ -38,26 +37,30 @@ class NetworkLocationService : Service() {
         super.onDestroy()
     }
 
-    private class Provider(context: Context) : LocationProviderBase(
-        context,
-        TAG,
-        ProviderProperties.Builder()
-            .setHasNetworkRequirement(true)
-            .setHasCellRequirement(false)
-            .setHasSatelliteRequirement(false)
-            .setHasMonetaryCost(false)
-            .setHasAltitudeSupport(false)
-            .setHasSpeedSupport(false)
-            .setHasBearingSupport(false)
-            .setPowerUsage(ProviderProperties.POWER_USAGE_LOW)
-            .setAccuracy(ProviderProperties.ACCURACY_COARSE)
-            .build()
-    ) {
+    private class Provider(
+        context: Context,
+    ) : LocationProviderBase(
+            context,
+            TAG,
+            ProviderProperties
+                .Builder()
+                .setHasNetworkRequirement(true)
+                .setHasCellRequirement(false)
+                .setHasSatelliteRequirement(false)
+                .setHasMonetaryCost(false)
+                .setHasAltitudeSupport(false)
+                .setHasSpeedSupport(false)
+                .setHasBearingSupport(false)
+                .setPowerUsage(ProviderProperties.POWER_USAGE_LOW)
+                .setAccuracy(ProviderProperties.ACCURACY_COARSE)
+                .build(),
+        ) {
         // Bridge from FusionEngine.Sink → LocationProviderBase.reportLocation.
         // reportLocation is safe to call from any thread.
-        private val fusion = FusionEngine(context) { fix ->
-            reportLocation(fix)
-        }
+        private val fusion =
+            FusionEngine(context) { fix ->
+                reportLocation(fix)
+            }
 
         override fun onSetRequest(request: ProviderRequest) {
             Log.i(TAG, "onSetRequest: $request")
@@ -77,7 +80,10 @@ class NetworkLocationService : Service() {
             callback.onFlushComplete()
         }
 
-        override fun onSendExtraCommand(command: String, extras: Bundle?) {
+        override fun onSendExtraCommand(
+            command: String,
+            extras: Bundle?,
+        ) {
             Log.d(TAG, "onSendExtraCommand: $command")
         }
 

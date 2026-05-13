@@ -24,8 +24,9 @@ import kotlin.math.sqrt
  * Without these gates the source would happily report a fix from a single
  * once-seen BSSID — which is worse than WPS would do, so we'd rather defer.
  */
-internal class LearnedCacheSource(private val db: LearnedCacheDb) {
-
+internal class LearnedCacheSource(
+    private val db: LearnedCacheDb,
+) {
     fun query(observations: List<AppleWpsSource.WifiObservation>): Location? {
         if (observations.size < MIN_BSSIDS_FOR_FIX) return null
 
@@ -38,9 +39,12 @@ internal class LearnedCacheSource(private val db: LearnedCacheDb) {
 
         val started = SystemClock.elapsedRealtime()
         val fix = fuseEntries(matches, rssiByBssid, started)
-        Log.i(TAG, "cache hit: ${matches.size} of ${observations.size} BSSIDs → " +
-            "lat=${fix.latitude} lng=${fix.longitude} acc=${fix.accuracy}m " +
-            "(${SystemClock.elapsedRealtime() - started}ms)")
+        Log.i(
+            TAG,
+            "cache hit: ${matches.size} of ${observations.size} BSSIDs → " +
+                "lat=${fix.latitude} lng=${fix.longitude} acc=${fix.accuracy}m " +
+                "(${SystemClock.elapsedRealtime() - started}ms)",
+        )
         return fix
     }
 
@@ -111,20 +115,28 @@ internal class LearnedCacheSource(private val db: LearnedCacheDb) {
 
     private fun normalizeBssid(bssid: String): String =
         bssid.trim().lowercase().replace("-", ":").let { s ->
-            if (':' in s) s.uppercase() else {
+            if (':' in s) {
+                s.uppercase()
+            } else {
                 require(s.length == 12) { "bad BSSID: $bssid" }
                 s.chunked(2).joinToString(":").uppercase()
             }
         }
 
-    private fun haversineMeters(la1: Double, ln1: Double, la2: Double, ln2: Double): Double {
+    private fun haversineMeters(
+        la1: Double,
+        ln1: Double,
+        la2: Double,
+        ln2: Double,
+    ): Double {
         val r = 6_371_000.0
         val phi1 = Math.toRadians(la1)
         val phi2 = Math.toRadians(la2)
         val dPhi = Math.toRadians(la2 - la1)
         val dLam = Math.toRadians(ln2 - ln1)
-        val a = Math.sin(dPhi / 2).let { it * it } +
-            cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
+        val a =
+            Math.sin(dPhi / 2).let { it * it } +
+                cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
         return 2 * r * Math.asin(sqrt(a))
     }
 

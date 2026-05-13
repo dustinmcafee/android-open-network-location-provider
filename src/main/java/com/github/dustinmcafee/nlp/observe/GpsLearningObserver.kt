@@ -37,7 +37,6 @@ internal class GpsLearningObserver(
     private val cache: LearnedCacheDb,
     private val getCurrentObservations: () -> List<WifiObservation>?,
 ) {
-
     private val lm: LocationManager =
         context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
@@ -49,8 +48,10 @@ internal class GpsLearningObserver(
         try {
             lm.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
-                /* minTimeMs = */ MIN_INTERVAL_MS,
-                /* minDistanceM = */ 0f,
+                // minTimeMs =
+                MIN_INTERVAL_MS,
+                // minDistanceM =
+                0f,
                 gpsListener,
                 handler.looper,
             )
@@ -66,27 +67,39 @@ internal class GpsLearningObserver(
 
     fun stop() {
         if (!registered) return
-        try { lm.removeUpdates(gpsListener) } catch (_: Throwable) {}
+        try {
+            lm.removeUpdates(gpsListener)
+        } catch (_: Throwable) {
+        }
         registered = false
         Log.i(TAG, "unsubscribed from GPS_PROVIDER")
     }
 
-    private val gpsListener = object : LocationListener {
-        override fun onLocationChanged(location: Location) = handle(location)
-        override fun onProviderEnabled(provider: String) {}
-        override fun onProviderDisabled(provider: String) {}
-        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-    }
+    private val gpsListener =
+        object : LocationListener {
+            override fun onLocationChanged(location: Location) = handle(location)
+
+            override fun onProviderEnabled(provider: String) {}
+
+            override fun onProviderDisabled(provider: String) {}
+
+            override fun onStatusChanged(
+                provider: String?,
+                status: Int,
+                extras: Bundle?,
+            ) {}
+        }
 
     private fun handle(gps: Location) {
         if (gps.accuracy <= 0f || gps.accuracy > MAX_GPS_ACCURACY_M) {
             Log.d(TAG, "GPS fix accuracy=${gps.accuracy}m — too loose, skipping")
             return
         }
-        val obs = getCurrentObservations() ?: run {
-            Log.d(TAG, "no recent BSSID scan — skipping")
-            return
-        }
+        val obs =
+            getCurrentObservations() ?: run {
+                Log.d(TAG, "no recent BSSID scan — skipping")
+                return
+            }
         val strong = obs.filter { it.rssi >= MIN_RSSI_DBM }
         if (strong.isEmpty()) {
             Log.d(TAG, "no strong-signal BSSIDs in latest scan — skipping")
@@ -104,15 +117,20 @@ internal class GpsLearningObserver(
             )
         }
         lastLearnEpochSec = nowEpochSec
-        Log.i(TAG, "learned: ${strong.size} BSSIDs anchored at " +
-            "lat=${gps.latitude} lng=${gps.longitude} " +
-            "acc=${gps.accuracy}m (${SystemClock.elapsedRealtime() - started}ms, " +
-            "cache: ${cache.stats()})")
+        Log.i(
+            TAG,
+            "learned: ${strong.size} BSSIDs anchored at " +
+                "lat=${gps.latitude} lng=${gps.longitude} " +
+                "acc=${gps.accuracy}m (${SystemClock.elapsedRealtime() - started}ms, " +
+                "cache: ${cache.stats()})",
+        )
     }
 
     private fun normalizeBssid(bssid: String): String =
         bssid.trim().lowercase().replace("-", ":").let { s ->
-            if (':' in s) s.uppercase() else {
+            if (':' in s) {
+                s.uppercase()
+            } else {
                 require(s.length == 12) { "bad BSSID: $bssid" }
                 s.chunked(2).joinToString(":").uppercase()
             }
@@ -120,10 +138,13 @@ internal class GpsLearningObserver(
 
     companion object {
         private const val TAG = "NlpGpsLearner"
+
         // 60s between GPS fixes — battery-friendly; APs don't move.
         private const val MIN_INTERVAL_MS = 60_000L
+
         // Tighter than the WPS gate so we only learn from confident GPS fixes.
         private const val MAX_GPS_ACCURACY_M = 30f
+
         // Only anchor BSSIDs we're physically close to.
         private const val MIN_RSSI_DBM = -80
     }

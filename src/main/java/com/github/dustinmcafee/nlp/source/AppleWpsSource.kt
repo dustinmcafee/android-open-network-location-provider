@@ -27,9 +27,11 @@ internal class AppleWpsSource(
     private val http: HttpClient = HttpClient,
     private val endpoint: String = "https://gs-loc.apple.com/clls/wloc",
 ) {
-
     /** A Wi-Fi observation: BSSID + signal strength (dBm, typically -100..0). */
-    data class WifiObservation(val bssid: String, val rssi: Int)
+    data class WifiObservation(
+        val bssid: String,
+        val rssi: Int,
+    )
 
     /**
      * Result of a WPS query: the fused location ([fix]) and the raw per-BSSID
@@ -63,30 +65,34 @@ internal class AppleWpsSource(
         val body = ArpcEnvelope.wrap(payload)
 
         val started = SystemClock.elapsedRealtime()
-        val response = try {
-            http.post(endpoint, body, HttpClient.APPLE_LOCATIONS_HEADERS)
-        } catch (e: IOException) {
-            Log.w(TAG, "WPS POST failed: ${e.message}")
-            return Result.EMPTY
-        }
+        val response =
+            try {
+                http.post(endpoint, body, HttpClient.APPLE_LOCATIONS_HEADERS)
+            } catch (e: IOException) {
+                Log.w(TAG, "WPS POST failed: ${e.message}")
+                return Result.EMPTY
+            }
         if (response.statusCode !in 200..299) {
             Log.w(TAG, "WPS HTTP ${response.statusCode}")
             return Result.EMPTY
         }
 
-        val protobuf = try {
-            ArpcEnvelope.unwrap(response.body)
-        } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "WPS response too short: ${response.body.size} bytes")
-            return Result.EMPTY
-        }
+        val protobuf =
+            try {
+                ArpcEnvelope.unwrap(response.body)
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "WPS response too short: ${response.body.size} bytes")
+                return Result.EMPTY
+            }
 
         // Normalize BSSIDs in the response so set-membership matches the
         // request side. Apple's responses come back uppercase with colons,
         // but we normalize defensively in case a future server change varies.
-        val allWithFixes = AppleWpsProto.parseResponse(protobuf)
-            .filter { it.hasFix }
-            .map { it.copy(bssid = normalizeBssid(it.bssid)) }
+        val allWithFixes =
+            AppleWpsProto
+                .parseResponse(protobuf)
+                .filter { it.hasFix }
+                .map { it.copy(bssid = normalizeBssid(it.bssid)) }
 
         // (A) Filter to BSSIDs we actually observed. Apple's neighbor-
         // expansion typically returns 50–150 BSSIDs that aren't in our
@@ -98,10 +104,13 @@ internal class AppleWpsSource(
         val rssiForFuse: Map<String, Int> =
             if (onlyObserved.isNotEmpty()) rssiByBssid else emptyMap()
 
-        Log.i(TAG, "WPS query: ${observations.size} BSSIDs in, " +
-            "${allWithFixes.size} returned with positions, " +
-            "${onlyObserved.size} of ours, fusing ${toFuse.size}, " +
-            "${SystemClock.elapsedRealtime() - started}ms round-trip")
+        Log.i(
+            TAG,
+            "WPS query: ${observations.size} BSSIDs in, " +
+                "${allWithFixes.size} returned with positions, " +
+                "${onlyObserved.size} of ours, fusing ${toFuse.size}, " +
+                "${SystemClock.elapsedRealtime() - started}ms round-trip",
+        )
 
         // Even when we have no usable fix to fuse (e.g. zero matches AND
         // empty fallback), we still return any per-BSSID positions Apple
@@ -116,8 +125,7 @@ internal class AppleWpsSource(
     }
 
     /** Backward-compatible thin wrapper for callers that only need the fix. */
-    fun query(observations: List<WifiObservation>): Location? =
-        queryWithRaw(observations).fix
+    fun query(observations: List<WifiObservation>): Location? = queryWithRaw(observations).fix
 
     /**
      * Compute weight for a single fix combining geographic and signal terms.
@@ -128,7 +136,10 @@ internal class AppleWpsSource(
      * expansion fallback path), [rssiByBssid] is empty and wSignal collapses
      * to a constant — degrading gracefully to pure 1/accuracy² weighting.
      */
-    private fun fixWeight(f: AppleWpsProto.WifiResult, rssiByBssid: Map<String, Int>): Double {
+    private fun fixWeight(
+        f: AppleWpsProto.WifiResult,
+        rssiByBssid: Map<String, Int>,
+    ): Double {
         val acc = (f.accuracyMeters ?: 100f).coerceAtLeast(1f).toDouble()
         val wGeo = 1.0 / (acc * acc)
         val rssi = rssiByBssid[f.bssid] ?: -95
@@ -194,7 +205,9 @@ internal class AppleWpsSource(
 
     private fun normalizeBssid(bssid: String): String =
         bssid.trim().lowercase().replace("-", ":").let { s ->
-            if (':' in s) s.uppercase() else {
+            if (':' in s) {
+                s.uppercase()
+            } else {
                 // No separators — insert colons between octets.
                 require(s.length == 12) { "bad BSSID: $bssid" }
                 s.chunked(2).joinToString(":").uppercase()
@@ -202,14 +215,20 @@ internal class AppleWpsSource(
         }
 
     /** Spherical-earth haversine distance in metres. Good to ~0.5% over short distances. */
-    private fun haversineMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+    private fun haversineMeters(
+        lat1: Double,
+        lng1: Double,
+        lat2: Double,
+        lng2: Double,
+    ): Double {
         val r = 6_371_000.0
         val phi1 = Math.toRadians(lat1)
         val phi2 = Math.toRadians(lat2)
         val dPhi = Math.toRadians(lat2 - lat1)
         val dLam = Math.toRadians(lng2 - lng1)
-        val a = Math.sin(dPhi / 2).let { it * it } +
-            cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
+        val a =
+            Math.sin(dPhi / 2).let { it * it } +
+                cos(phi1) * cos(phi2) * Math.sin(dLam / 2).let { it * it }
         return 2 * r * Math.asin(sqrt(a))
     }
 

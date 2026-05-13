@@ -1,0 +1,8 @@
+# shellcheck configuration for open-network-location-provider
+#
+# The fetch script (integration/init/nlp-celldb-fetch.sh) runs on Android
+# via init, which uses /bin/sh (symlink to mksh or toybox sh on Android 7+).
+# Android exposes non-POSIX builtins (log, getprop, setprop) that shellcheck
+# does not know about.
+enable=all
+disable=SC2039  # In POSIX sh, 'local' is undefined (Android sh supports it)

@@ -36,7 +36,6 @@ import java.io.File
 internal class OfflineCellDb private constructor(
     private val db: SQLiteDatabase?,
 ) {
-
     /** A cell tower's database position. */
     data class Tower(
         val latE8: Long,
@@ -53,28 +52,39 @@ internal class OfflineCellDb private constructor(
     fun lookup(obs: CellObserver.CellObservation): Tower? {
         val d = db ?: return null
         return try {
-            d.query(
-                TABLE,
-                COLUMNS,
-                "radio = ? AND mcc = ? AND net = ? AND area = ? AND cell = ?",
-                arrayOf(obs.radio.name, obs.mcc.toString(), obs.mnc.toString(),
-                        obs.area.toString(), obs.cell.toString()),
-                null, null, null, "1",
-            ).use { c ->
-                if (!c.moveToFirst()) return null
-                Tower(
-                    latE8 = c.getLong(0),
-                    lngE8 = c.getLong(1),
-                    rangeMeters = c.getInt(2),
-                )
-            }
+            d
+                .query(
+                    TABLE,
+                    COLUMNS,
+                    "radio = ? AND mcc = ? AND net = ? AND area = ? AND cell = ?",
+                    arrayOf(
+                        obs.radio.name,
+                        obs.mcc.toString(),
+                        obs.mnc.toString(),
+                        obs.area.toString(),
+                        obs.cell.toString(),
+                    ),
+                    null,
+                    null,
+                    null,
+                    "1",
+                ).use { c ->
+                    if (!c.moveToFirst()) return null
+                    Tower(
+                        latE8 = c.getLong(0),
+                        lngE8 = c.getLong(1),
+                        rangeMeters = c.getInt(2),
+                    )
+                }
         } catch (e: SQLException) {
             Log.w(TAG, "cell lookup failed: ${e.message}")
             null
         }
     }
 
-    fun close() { db?.close() }
+    fun close() {
+        db?.close()
+    }
 
     companion object {
         private const val TAG = "NlpOfflineCellDb"

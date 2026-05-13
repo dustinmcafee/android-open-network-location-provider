@@ -1,5 +1,7 @@
-#!/system/bin/sh
+#!/bin/sh
 #
+# shellcheck shell=sh
+# shellcheck disable=SC2039,SC2312  # Android builtins: log, getprop, stat -c%s
 # nlp-celldb-fetch.sh — on-device first-boot fetcher for the
 # OpenCellID-derived SQLite cell tower database.
 #
