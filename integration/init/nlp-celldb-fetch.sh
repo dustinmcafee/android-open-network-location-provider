@@ -34,7 +34,7 @@ REFRESH_AFTER_SEC=7776000
 # to 2 downloads/day per token, so devices must NOT hit it directly.
 DUMP_URL="https://TODO-YOUR-CDN/nlp-celldb/cells.db"
 
-log() { log -t "$LOG_TAG" -p i "$1"; }
+log() { command log -t "$LOG_TAG" -p i "$1"; }
 err() { log -t "$LOG_TAG" -p e "$1"; }
 
 [ -d "$DEST_DIR" ] || mkdir -p "$DEST_DIR"

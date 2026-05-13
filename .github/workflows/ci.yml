@@ -57,6 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install xmllint
+        run: sudo apt-get install -y libxml2-utils
+
       - name: Validate manifests + overlay XML
         run: |
           for f in AndroidManifest.xml \
