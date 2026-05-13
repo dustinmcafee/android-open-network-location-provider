@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  # ── Kotlin lint ──────────────────────────────────────────────────────────
+  ktlint:
+    name: Kotlin lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download ktlint
+        run: |
+          curl -sSLO https://github.com/pinterest/ktlint/releases/latest/download/ktlint
+          chmod +x ktlint
+
+      - name: Run ktlint
+        run: |
+          ./ktlint \
+            'src/**/*.kt' \
+            'probe/src/**/*.kt' \
+            --reporter=plain
+
+  # ── Shell script lint ───────────────────────────────────────────────────
+  shellcheck:
+    name: Shell lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: integration/init
+          severity: warning
+
+  # ── Python syntax check ─────────────────────────────────────────────────
+  python-syntax:
+    name: Python syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check celldb pipeline
+        run: |
+          python3 -m py_compile celldb-pipeline/opencellid-to-sqlite.py
+          echo "Python syntax OK"
+
+  # ── XML validation ───────────────────────────────────────────────────────
+  xml-validate:
+    name: XML validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifests + overlay XML
+        run: |
+          for f in AndroidManifest.xml \
+                   probe/AndroidManifest.xml \
+                   res/values/strings.xml \
+                   integration/overlay/frameworks/base/core/res/res/values/nlp.xml \
+                   integration/privapp-permissions-nlp.xml; do
+            xmllint --noout "$f" && echo "✓ $f"
+          done
