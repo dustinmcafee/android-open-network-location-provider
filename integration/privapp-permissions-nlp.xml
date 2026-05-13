@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Privileged permission grants for open-network-location-provider.
+  Place this file in your device's system_ext/etc/permissions/ partition,
+  e.g. via PRODUCT_COPY_FILES in your device makefile:
+
+    PRODUCT_COPY_FILES += \
+        <repo>/integration/privapp-permissions-nlp.xml:\
+        system_ext/etc/permissions/privapp-permissions-nlp.xml
+-->
+<permissions>
+    <privapp-permissions package="com.github.dustinmcafee.nlp">
+        <permission name="android.permission.INSTALL_LOCATION_PROVIDER"/>
+        <permission name="android.permission.ACCESS_FINE_LOCATION"/>
+        <permission name="android.permission.ACCESS_COARSE_LOCATION"/>
+        <permission name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+        <permission name="android.permission.UPDATE_APP_OPS_STATS"/>
+        <permission name="android.permission.READ_PHONE_STATE"/>
+    </privapp-permissions>
+</permissions>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AOSP framework resource overrides for open-network-location-provider.
+
+  CRITICAL: config_enableNetworkLocationOverlay must be set to FALSE.
+  When true (the AOSP default), the framework ignores the package name
+  string and scans every system app declaring the v3 NLP action, which
+  means Qualcomm / Google NLP wins instead of this provider.
+
+  Add this overlay tree to your device makefile:
+    PRODUCT_PACKAGE_OVERLAYS += <path-to-this-repo>/integration/overlay
+
+  Verified against Android 14 frameworks/base/services/core/java/com/
+  android/server/servicewatcher/CurrentUserServiceSupplier.java.
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+
+    <!-- Disable the "scan everything" overlay mode so the explicit
+         package name below is actually used. -->
+    <bool name="config_enableNetworkLocationOverlay" translatable="false">false</bool>
+
+    <!-- Point the system at this provider. Replace the package name if
+         you changed it from the default. -->
+    <string name="config_networkLocationProviderPackageName" translatable="false">com.github.dustinmcafee.nlp</string>
+
+    <!-- Uncomment when GeocoderService / a Nominatim wrapper is added:
+    <bool name="config_enableGeocoderOverlay" translatable="false">false</bool>
+    <string name="config_geocoderProviderPackageName" translatable="false">com.github.dustinmcafee.nlp</string>
+    -->
+
+    <!-- Add this package to the set that is auto-granted location
+         permissions by the system. Keep the fused provider entry. -->
+    <string-array name="config_locationProviderPackageNames" translatable="false">
+        <item>com.android.location.fused</item>
+        <item>com.github.dustinmcafee.nlp</item>
+    </string-array>
+
+</resources>

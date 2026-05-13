@@ -1,0 +1,32 @@
+// NlpProbe — engineering-only test harness for open-network-location-provider.
+//
+// A single-Activity APK that calls LocationManager.requestLocationUpdates(
+// NETWORK_PROVIDER, ...) for 30 seconds and logs each fix to logcat under
+// tag `NlpProbe`.
+//
+// Install: build OpenNetworkLocation first, then adb install -r NlpProbe.apk
+//
+// Usage:
+//   adb shell settings put global stay_on_while_plugged_in 7   # screen awake
+//   adb shell input keyevent KEYCODE_WAKEUP
+//   adb logcat -c
+//   adb shell am start -n com.github.dustinmcafee.nlp.probe/.MainActivity
+//   adb logcat -s NlpProbe:I NlpFusion:I AppleWpsSource:I NlpWifiObserver:I
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+android_app {
+    name: "NlpProbe",
+
+    srcs: ["src/main/**/*.kt"],
+    sdk_version: "current",
+    privileged: true,
+    system_ext_specific: true,
+    certificate: "platform",
+
+    optimize: {
+        enabled: false,
+    },
+}

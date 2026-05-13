@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_label">Network Location Provider</string>
+
+    <!-- Required by OpenCelliD CC-BY-SA 4.0 license.
+         Surface this string somewhere user-reachable (Settings → About)
+         if you ship a build that includes the OpenCellID cell-tower DB. -->
+    <string name="celldb_attribution">Cell tower data: <a href="https://opencellid.org">OpenCelliD</a> (CC BY-SA 4.0)</string>
+</resources>

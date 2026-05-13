@@ -1,0 +1,52 @@
+# SELinux policy for the cell-DB first-boot fetcher and the location
+# provider's read access to the downloaded database.
+#
+# Integrate by adding this file to your SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS:
+#   SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += <repo>/integration/sepolicy
+#
+# Also add the corresponding file_contexts entries from file_contexts.
+
+# ─── Type declarations ────────────────────────────────────────────────────────
+
+type nlp_celldb_fetch, domain, coredomain;
+type nlp_celldb_fetch_exec, exec_type, system_file_type, file_type;
+type nlp_celldb_data_file, file_type, data_file_type, core_data_file_type;
+
+init_daemon_domain(nlp_celldb_fetch)
+
+# ─── Fetcher domain (the init service that downloads the DB) ──────────────────
+
+# Read the shipped SHA digest from /system_ext/etc/nlp-celldb.sha256.
+# Files in /system_ext/etc/ are labeled system_file by default on Android 14.
+allow nlp_celldb_fetch system_file:dir { search getattr };
+allow nlp_celldb_fetch system_file:file r_file_perms;
+
+# Read/write the cell-DB data directory and cells.db (atomic-rename via .part).
+allow nlp_celldb_fetch nlp_celldb_data_file:dir create_dir_perms;
+allow nlp_celldb_fetch nlp_celldb_data_file:file create_file_perms;
+
+# chown/chmod the downloaded file.
+allow nlp_celldb_fetch self:capability { chown fowner fsetid };
+
+# Run /system/bin/sh + curl + sha256sum + mv + ping.
+allow nlp_celldb_fetch system_file:file rx_file_perms;
+allow nlp_celldb_fetch toolbox_exec:file rx_file_perms;
+allow nlp_celldb_fetch shell_exec:file rx_file_perms;
+allow nlp_celldb_fetch nlp_celldb_fetch_exec:file { entrypoint x_file_perms r_file_perms };
+
+# Outbound HTTPS (download) + connectivity probe (ping 8.8.8.8).
+net_domain(nlp_celldb_fetch)
+allow nlp_celldb_fetch self:rawip_socket { create read write getopt setopt bind };
+allow nlp_celldb_fetch self:capability net_raw;
+
+# Logcat (`log -t ... -p i ...` in the fetch script).
+unix_socket_connect(nlp_celldb_fetch, logdw, logd)
+
+# ─── Reader domain (the location provider service) ───────────────────────────
+#
+# The location provider APK runs in the platform_app domain
+# (it is platform-signed). It needs to read /data/misc/nlp-celldb/cells.db
+# at runtime for offline cell-tower lookups.
+
+allow platform_app nlp_celldb_data_file:dir { search getattr open read };
+allow platform_app nlp_celldb_data_file:file r_file_perms;

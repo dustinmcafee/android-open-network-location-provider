@@ -1,0 +1,28 @@
+# Cell-tower DB first-boot fetcher for open-network-location-provider.
+#
+# Downloads the OpenCellID-derived SQLite (~200–500 MB depending on filtering)
+# to /data/misc/nlp-celldb/cells.db on first boot once connectivity is up.
+# Verifies SHA-256 against the digest shipped at
+# /system_ext/etc/nlp-celldb.sha256 before atomic-renaming into place.
+#
+# OfflineCellDbSource reads cells.db at runtime. Until the download
+# completes (or if the service can't reach the CDN), the source returns
+# null and the fusion engine falls back gracefully.
+#
+# Idempotent — script self-checks against the shipped digest, refetches
+# only when stale or missing.
+
+on post-fs-data
+    mkdir /data/misc/nlp-celldb 0775 system system
+
+# Service is started after sys.boot_completed=1 so connectivity is up.
+service nlp-celldb-fetch /system_ext/bin/nlp-celldb-fetch.sh
+    class late_start
+    user system
+    group system net_raw inet
+    seclabel u:r:nlp_celldb_fetch:s0
+    oneshot
+    disabled
+
+on property:sys.boot_completed=1
+    start nlp-celldb-fetch

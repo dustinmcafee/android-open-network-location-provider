@@ -1,0 +1,8 @@
+# SELinux file contexts for open-network-location-provider.
+# Append these entries to your device's file_contexts file.
+
+# Cell-DB first-boot fetcher script.
+/system_ext/bin/nlp-celldb-fetch\.sh            u:object_r:nlp_celldb_fetch_exec:s0
+
+# Cell-DB data directory and files on /data.
+/data/misc/nlp-celldb(/.*)?                     u:object_r:nlp_celldb_data_file:s0

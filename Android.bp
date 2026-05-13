@@ -1,0 +1,28 @@
+// open-network-location-provider
+//
+// Registers as the system NETWORK_PROVIDER on AOSP devices without GMS.
+// See docs/INTEGRATION.md for how to wire this into your device tree.
+
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+android_app {
+    name: "OpenNetworkLocation",
+
+    srcs: ["src/main/**/*.kt"],
+
+    sdk_version: "system_current",
+
+    privileged: true,
+    system_ext_specific: true,
+    certificate: "platform",
+
+    // Phase 2+: add okhttp, protobuf-javalite when available in your tree.
+    // Phase 3+: add androidx.room or raw sqlite deps if needed.
+    static_libs: [],
+
+    optimize: {
+        enabled: false,
+    },
+}
